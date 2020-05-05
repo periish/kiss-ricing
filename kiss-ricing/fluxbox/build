@@ -1,0 +1,11 @@
+#!/bin/sh -e
+
+./configure \
+    --prefix=/usr \
+    --disable-xpm \
+    --disable-fribidi \
+    --disable-nls \
+    --mandir=/usr/share/man
+
+make
+make DESTDIR="$1" install
