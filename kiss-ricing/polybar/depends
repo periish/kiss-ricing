@@ -1,5 +1,6 @@
 alsa-lib
 cairo
+cmake make
 fontconfig
 freetype-harfbuzz
 glib
