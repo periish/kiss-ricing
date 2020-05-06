@@ -1,0 +1,109 @@
+diff --git a/include/helper.h b/include/helper.h
+index 77718cf..97d0404 100644
+--- a/include/helper.h
++++ b/include/helper.h
+@@ -307,15 +307,6 @@ gboolean helper_execute ( const char *wd, char **args, const char *error_precmd,
+  */
+ gboolean helper_execute_command ( const char *wd, const char *cmd, gboolean run_in_term, RofiHelperExecuteContext *context );
+ 
+-/**
+- * @param file The file path
+- * @param height The wanted height
+- * Gets a surface from an svg path
+- *
+- * @returns a cairo surface from an svg path
+- */
+-cairo_surface_t *cairo_image_surface_create_from_svg ( const gchar* file, int height );
+-
+ /**
+  * Ranges.
+  */
+diff --git a/source/helper.c b/source/helper.c
+index 8b52284..5002469 100644
+--- a/source/helper.c
++++ b/source/helper.c
+@@ -47,7 +47,6 @@
+ #include <pango/pango.h>
+ #include <pango/pango-fontmap.h>
+ #include <pango/pangocairo.h>
+-#include <librsvg/rsvg.h>
+ #include "display.h"
+ #include "xcb.h"
+ #include "helper.h"
+@@ -1071,50 +1070,6 @@ char *helper_get_theme_path ( const char *file )
+     return filename;
+ }
+ 
+-cairo_surface_t* cairo_image_surface_create_from_svg ( const gchar* file, int height )
+-{
+-    GError          *error   = NULL;
+-    cairo_surface_t *surface = NULL;
+-    RsvgHandle      * handle;
+-
+-    handle = rsvg_handle_new_from_file ( file, &error );
+-    if ( G_LIKELY ( handle != NULL ) ) {
+-        RsvgDimensionData dimensions;
+-        // Update DPI.
+-        rsvg_handle_set_dpi ( handle, config.dpi );
+-        // Get size.
+-        rsvg_handle_get_dimensions ( handle, &dimensions );
+-        // Create cairo surface in the right size.
+-        double scale = (double) height / dimensions.height;
+-        surface = cairo_image_surface_create ( CAIRO_FORMAT_ARGB32,
+-                                               (double) dimensions.width * scale,
+-                                               (double) dimensions.height * scale );
+-        gboolean failed = cairo_surface_status ( surface ) != CAIRO_STATUS_SUCCESS;
+-        if ( G_LIKELY ( failed == FALSE ) ) {
+-            cairo_t *cr = cairo_create ( surface );
+-            cairo_scale ( cr, scale, scale );
+-            failed = rsvg_handle_render_cairo ( handle, cr ) == FALSE;
+-            cairo_destroy ( cr );
+-        }
+-
+-        rsvg_handle_close ( handle, &error );
+-        g_object_unref ( handle );
+-
+-        /** Rendering fails */
+-        if ( G_UNLIKELY ( failed ) ) {
+-            g_warning ( "Failed to render file: '%s'", file );
+-            cairo_surface_destroy ( surface );
+-            surface = NULL;
+-        }
+-    }
+-    if ( G_UNLIKELY ( error != NULL ) ) {
+-        g_warning ( "Failed to render SVG file: '%s': %s", file, error->message );
+-        g_error_free ( error );
+-    }
+-
+-    return surface;
+-}
+-
+ static void parse_pair ( char  *input, rofi_range_pair  *item )
+ {
+     int                index = 0;
+diff --git a/source/rofi-icon-fetcher.c b/source/rofi-icon-fetcher.c
+index c9e7846..f78d913 100644
+--- a/source/rofi-icon-fetcher.c
++++ b/source/rofi-icon-fetcher.c
+@@ -160,9 +160,6 @@ static void rofi_icon_fetcher_worker ( thread_state *sdata, G_GNUC_UNUSED gpoint
+     if ( g_str_has_suffix ( icon_path, ".png" ) ) {
+         icon_surf = cairo_image_surface_create_from_png ( icon_path );
+     }
+-    else if ( g_str_has_suffix ( icon_path, ".svg" ) ) {
+-        icon_surf = cairo_image_surface_create_from_svg ( icon_path, sentry->size );
+-    }
+     else {
+         g_debug ( "icon type not yet supported: %s", icon_path  );
+     }
+diff --git a/source/xcb.c b/source/xcb.c
+index f5f759b..e08129c 100644
+--- a/source/xcb.c
++++ b/source/xcb.c
+@@ -38,7 +38,6 @@
+ #include <glib.h>
+ #include <cairo.h>
+ #include <cairo-xcb.h>
+-#include <librsvg/rsvg.h>
+ 
+ #include <xcb/xcb.h>
+ #include <xcb/xcb_aux.h>

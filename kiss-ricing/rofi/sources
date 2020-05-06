@@ -1,0 +1,4 @@
+https://github.com/davatorium/rofi/releases/download/1.5.4/rofi-1.5.4.tar.xz
+patches/rofi-no-bash.patch
+patches/rofi-no-librsvg.patch
+patches/rofi-no-libsn.patch

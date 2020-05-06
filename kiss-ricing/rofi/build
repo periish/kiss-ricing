@@ -1,0 +1,15 @@
+#!/bin/sh -e
+
+for patch in *.patch; do
+    patch -p1 < "$patch"
+done
+
+sed -i 's/as_fn_error.*libstart/: "/' configure
+sed -i 's/as_fn_error.*librsvg/: "/'  configure
+
+./configure \
+    --prefix=/usr \
+    --disable-check
+
+make
+make DESTDIR="$1" install

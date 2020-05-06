@@ -1,0 +1,194 @@
+diff --git a/include/xcb-internal.h b/include/xcb-internal.h
+index d03807b..ddc476d 100644
+--- a/include/xcb-internal.h
++++ b/include/xcb-internal.h
+@@ -27,9 +27,6 @@
+ 
+ #ifndef ROFI_XCB_INTERNAL_H
+ #define ROFI_XCB_INTERNAL_H
+-/** Indication we accept that startup notification api is not yet frozen */
+-#define SN_API_NOT_YET_FROZEN
+-#include <libsn/sn.h>
+ 
+ #include <xcb/xcb.h>
+ #include <xcb/xcb_ewmh.h>
+@@ -48,8 +45,6 @@ struct _xcb_stuff
+     xcb_ewmh_connection_t ewmh;
+     xcb_screen_t          *screen;
+     int                   screen_nbr;
+-    SnDisplay             *sndisplay;
+-    SnLauncheeContext     *sncontext;
+     struct _workarea      *monitors;
+     struct
+     {
+diff --git a/source/view.c b/source/view.c
+index e9b4d8d..2c575e9 100644
+--- a/source/view.c
++++ b/source/view.c
+@@ -46,9 +46,6 @@
+ #include <cairo.h>
+ #include <cairo-xcb.h>
+ 
+-/** Indicated we understand the startup notification api is not yet stable.*/
+-#define SN_API_NOT_YET_FROZEN
+-#include <libsn/sn.h>
+ #include "rofi.h"
+ 
+ #include "timings.h"
+@@ -804,10 +801,6 @@ void __create_window ( MenuFlags menu_flags )
+     else if ( config.fake_transparency && config.fake_background ) {
+         rofi_view_setup_fake_transparency ( config.fake_background );
+     }
+-    if ( xcb->sncontext != NULL ) {
+-        sn_launchee_context_setup_window ( xcb->sncontext, CacheState.main_window );
+-    }
+-    TICK_N ( "setup startup notification" );
+     widget_free ( WIDGET ( win ) );
+     TICK_N ( "done" );
+ 
+@@ -1754,9 +1747,6 @@ RofiViewState *rofi_view_create ( Mode *sw,
+     xcb_map_window ( xcb->connection, CacheState.main_window );
+     widget_queue_redraw ( WIDGET ( state->main_window ) );
+     xcb_flush ( xcb->connection );
+-    if ( xcb->sncontext != NULL ) {
+-        sn_launchee_context_complete ( xcb->sncontext );
+-    }
+     return state;
+ }
+ 
+@@ -1794,9 +1784,6 @@ int rofi_view_error_dialog ( const char *msg, int markup )
+     xcb_map_window ( xcb->connection, CacheState.main_window );
+     widget_queue_redraw ( WIDGET ( state->main_window ) );
+ 
+-    if ( xcb->sncontext != NULL ) {
+-        sn_launchee_context_complete ( xcb->sncontext );
+-    }
+ 
+     // Set it as current window.
+     rofi_view_set_active ( state );
+diff --git a/source/xcb.c b/source/xcb.c
+index 249069f..78a793f 100644
+--- a/source/xcb.c
++++ b/source/xcb.c
+@@ -49,12 +49,7 @@
+ #include <xcb/xkb.h>
+ #include <xkbcommon/xkbcommon.h>
+ #include <xkbcommon/xkbcommon-x11.h>
+-/** Indicate that we know the startup notification api is not yet stable. */
+-#define SN_API_NOT_YET_FROZEN
+-/** This function is declared as sn_launcher_context_set_application_id but implemented as sn_launcher_set_application_id. Quick Fix. */
+-#define sn_launcher_context_set_application_id    sn_launcher_set_application_id
+ #include "rofi-types.h"
+-#include <libsn/sn.h>
+ #include "display.h"
+ #include "xcb-internal.h"
+ #include "xcb.h"
+@@ -80,8 +75,6 @@ struct _xcb_stuff xcb_int = {
+     .connection = NULL,
+     .screen     = NULL,
+     .screen_nbr = -1,
+-    .sndisplay  = NULL,
+-    .sncontext  = NULL,
+     .monitors   = NULL
+ };
+ xcb_stuff         *xcb = &xcb_int;
+@@ -452,41 +445,7 @@ void display_dump_monitor_layout ( void )
+ 
+ void display_startup_notification ( RofiHelperExecuteContext *context, GSpawnChildSetupFunc *child_setup, gpointer *user_data )
+ {
+-    if ( context == NULL ) {
+-        return;
+-    }
+-
+-    SnLauncherContext *sncontext;
+-
+-    sncontext = sn_launcher_context_new ( xcb->sndisplay, xcb->screen_nbr );
+-
+-    sn_launcher_context_set_name ( sncontext, context->name );
+-    sn_launcher_context_set_description ( sncontext, context->description );
+-    if ( context->binary != NULL ) {
+-        sn_launcher_context_set_binary_name ( sncontext, context->binary );
+-    }
+-    if ( context->icon != NULL ) {
+-        sn_launcher_context_set_icon_name ( sncontext, context->icon );
+-    }
+-    if ( context->app_id != NULL ) {
+-        sn_launcher_context_set_application_id ( sncontext, context->app_id );
+-    }
+-    if ( context->wmclass != NULL ) {
+-        sn_launcher_context_set_wmclass ( sncontext, context->wmclass );
+-    }
+-
+-    xcb_get_property_cookie_t c;
+-    unsigned int              current_desktop = 0;
+-
+-    c = xcb_ewmh_get_current_desktop ( &xcb->ewmh, xcb->screen_nbr );
+-    if ( xcb_ewmh_get_current_desktop_reply ( &xcb->ewmh, c, &current_desktop, NULL ) ) {
+-        sn_launcher_context_set_workspace ( sncontext, current_desktop );
+-    }
+-
+-    sn_launcher_context_initiate ( sncontext, "rofi", context->command, xcb->last_timestamp );
+-
+-    *child_setup = (GSpawnChildSetupFunc) sn_launcher_context_setup_child_process;
+-    *user_data   = sncontext;
++    return;
+ }
+ 
+ static int monitor_get_dimension ( int monitor_id, workarea *mon )
+@@ -959,9 +918,6 @@ static gboolean main_loop_x11_event_handler ( xcb_generic_event_t *ev, G_GNUC_UN
+         }
+         return G_SOURCE_CONTINUE;
+     }
+-    if ( xcb->sndisplay != NULL ) {
+-        sn_xcb_display_process_event ( xcb->sndisplay, ev );
+-    }
+     main_loop_x11_event_handler_view ( ev );
+     return G_SOURCE_CONTINUE;
+ }
+@@ -1038,12 +994,12 @@ static void release_pointer ( void )
+ 
+ /** X server error depth. to handle nested errors. */
+ static int error_trap_depth = 0;
+-static void error_trap_push ( G_GNUC_UNUSED SnDisplay *display, G_GNUC_UNUSED xcb_connection_t *xdisplay )
++static void error_trap_push ( G_GNUC_UNUSED xcb_connection_t *xdisplay )
+ {
+     ++error_trap_depth;
+ }
+ 
+-static void error_trap_pop ( G_GNUC_UNUSED SnDisplay *display, xcb_connection_t *xdisplay )
++static void error_trap_pop ( xcb_connection_t *xdisplay )
+ {
+     if ( error_trap_depth == 0 ) {
+         g_warning ( "Error trap underflow!" );
+@@ -1196,16 +1152,6 @@ gboolean display_setup ( GMainLoop *main_loop, NkBindings *bindings )
+         return FALSE;
+     }
+ 
+-    // startup not.
+-    xcb->sndisplay = sn_xcb_display_new ( xcb->connection, error_trap_push, error_trap_pop );
+-    if ( xcb_connection_has_error ( xcb->connection ) ) {
+-        g_warning ( "Connection has error" );
+-        return FALSE;
+-    }
+-
+-    if ( xcb->sndisplay != NULL ) {
+-        xcb->sncontext = sn_launchee_context_new_from_environment ( xcb->sndisplay, xcb->screen_nbr );
+-    }
+     if ( xcb_connection_has_error ( xcb->connection ) ) {
+         g_warning ( "Connection has error" );
+         return FALSE;
+@@ -1340,14 +1286,6 @@ void display_cleanup ( void )
+     g_debug ( "Cleaning up XCB and XKB" );
+ 
+     nk_bindings_seat_free ( xcb->bindings_seat );
+-    if ( xcb->sncontext != NULL ) {
+-        sn_launchee_context_unref ( xcb->sncontext );
+-        xcb->sncontext = NULL;
+-    }
+-    if ( xcb->sndisplay != NULL ) {
+-        sn_display_unref ( xcb->sndisplay );
+-        xcb->sndisplay = NULL;
+-    }
+     x11_monitors_free ();
+     xcb_ewmh_connection_wipe ( &( xcb->ewmh ) );
+     xcb_flush ( xcb->connection );

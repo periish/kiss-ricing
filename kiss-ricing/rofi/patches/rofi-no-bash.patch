@@ -1,0 +1,36 @@
+diff --git a/script/get_git_rev.sh b/script/get_git_rev.sh
+index 1e36b6f..d8f78ef 100755
+--- a/script/get_git_rev.sh
++++ b/script/get_git_rev.sh
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env bash
++#!/bin/sh
+ 
+ DIR=$1
+ FILE=$2
+@@ -6,18 +6,18 @@ GIT=$(which git)
+ 
+ if [ -d "${DIR}/.git/" ] && [ -n "${GIT}" ]
+ then
+-    echo -n "#define GIT_VERSION \""  > ${FILE}.tmp
++    printf '#define GIT_VERSION "' > "${FILE}.tmp"
+     BRTG="$(${GIT} describe --tags --always --all | sed -e 's:heads/::')"
+     REV="$(${GIT} describe --tags --always --dirty| sed -e 's:-g\([a-f0-9]\{7\}\):-git-\1:g')"
+-    echo -n "${REV} (${BRTG})" >> ${FILE}.tmp
+-    echo "\"" >> ${FILE}.tmp
++    printf '%s' "${REV} (${BRTG})" >> "${FILE}.tmp"
++    printf '"' >> "${FILE}.tmp"
+ else
+-    echo "#undef GIT_VERSION" > ${FILE}.tmp
++    printf '#undef GIT_VERSION' > "${FILE}.tmp"
+ fi
+ 
+-if [ ! -f ${FILE} ] || ! diff ${FILE}.tmp ${FILE} > /dev/null
++if [ ! -f "${FILE}" ] || ! diff "${FILE}.tmp" "${FILE}" > /dev/null
+ then
+-    mv ${FILE}.tmp ${FILE}
++    mv "${FILE}.tmp" "${FILE}"
+ else
+-    rm ${FILE}.tmp
++    rm "${FILE}.tmp"
+ fi
