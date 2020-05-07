@@ -7,6 +7,10 @@ tools to help your KISS install look nice
 
 -> A small, lightweight floating window manager controlled via ipc.
 
+**ctwm**
+
+-> A lightweight, highly configurable floating window manager.
+
 **cwm**
 
 -> A port of OpenBSD's floating window manager to Linux.
@@ -54,6 +58,10 @@ tools to help your KISS install look nice
 **stow**
 
 -> A symlink farm manager.
+
+**tinywm**
+
+-> A tiny window manager in 44sloc.
 
 **twm**
 
